@@ -15,7 +15,7 @@ https://github.com/apache/incubator-myriad/tree/master/vagrant/libvirt/mesos
 
 ```
 
-./gradlew :yarn-decoupling:build -x checkstyleMain -x findbugsMain 
+./gradlew clean :yarn-decoupling:build -x checkstyleMain -x findbugsMain 
 
 sshpass -p 'vagrant' scp yarn-decoupling/run-framework-myriad.sh vagrant@192.168.121.84:/home/vagrant
 
@@ -27,6 +27,21 @@ vagrant ssh mesos-m1
 
 sh run-framework-myriad.sh mesos-m1 run-executor-myriad.cmd
 ```
+
+```
+
+./gradlew clean :yarn-decoupling:build -x checkstyleMain -x findbugsMain 
+
+scp yarn-decoupling/run-framework-myriad.sh root@fedora-mesos-m0.node.keedio.cloud:/root
+scp yarn-decoupling/build/libs/yarn-decoupling.jar root@fedora-mesos-m0.node.keedio.cloud:/tmp
+
+ssh fedora-mesos-m0.node.keedio.cloud
+
+sh run-framework-myriad.sh fedora-mesos-m0.node.keedio.cloud
+```
+
+Apache Mesos UI: http://100.0.10.101:5050
+Yarn UI: http://100.0.10.10x:8088
 
 ## Built With
 

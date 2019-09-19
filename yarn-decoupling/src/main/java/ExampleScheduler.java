@@ -150,13 +150,33 @@ import org.apache.mesos.SchedulerDriver;
 
 public class ExampleScheduler implements Scheduler {
 
-    private int taskIdCounter = 0;
-    private Protos.ExecutorInfo executorInfo;
-    private Protos.CommandInfo commandInfo;
+    private int taskId = 0;
+    private int resourceManagers = 0;
+    private int nodeManagers = 0;
+    private String commandInfoRM;
+    private Protos.CommandInfo commandInfoNM;
+    private String hostnameRM = "";
+    private static final String remoteExecutorPath = "/root/hadoop-2.7.7.tar";
 
-    public ExampleScheduler(Protos.ExecutorInfo executorInfo, Protos.CommandInfo commandInfo) {
-        this.executorInfo = executorInfo;
-        this.commandInfo = commandInfo;
+    public ExampleScheduler(String commandRM, Protos.CommandInfo commandInfoNM) {
+        this.commandInfoRM = commandRM;
+        this.commandInfoNM = commandInfoNM;
+    }
+
+    private static Protos.CommandInfo.URI getUri() {
+        Protos.CommandInfo.URI.Builder uriBuilder = Protos.CommandInfo.URI.newBuilder();
+        uriBuilder.setValue(remoteExecutorPath);
+//        uriBuilder.setExecutable(true);
+        uriBuilder.setExtract(false);
+        return uriBuilder.build();
+    }
+
+    private static Protos.CommandInfo getCommandInfo(String command) {
+        Protos.CommandInfo.Builder cmdInfoBuilder = Protos.CommandInfo.newBuilder();
+        cmdInfoBuilder.addUris(getUri());
+        cmdInfoBuilder.setValue(command);
+        cmdInfoBuilder.setShell(true);
+        return cmdInfoBuilder.build();
     }
 
     /*
@@ -186,19 +206,42 @@ public class ExampleScheduler implements Scheduler {
     public void resourceOffers(SchedulerDriver schedulerDriver, List<Protos.Offer> offers) {
         for (Protos.Offer offer : offers) {
 
-            if (taskIdCounter < 1) {
+            hostnameRM = offer.getHostname();
 
+            String yarnConfig = "echo \"<configuration><property><name>yarn.acl.enable</name><value>0</value></property>" +
+                    "<property><name>yarn.resourcemanager.hostname</name><value>" + hostnameRM + "</value></property></configuration>\" " +
+                    "> /opt/hadoop/etc/hadoop/yarn-site.xml && ";
+
+            if (resourceManagers < 1) {
+                System.out.println("Starting RM");
                 Protos.TaskID taskId = buildNewTaskID();
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
                         .setName("task " + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
-                        .addResources(buildResource("cpus", 1.8))
+                        .addResources(buildResource("cpus", 1))
                         .addResources(buildResource("mem", 2048))
                         .addResources(buildResource("disk", 10000))
-                        .setCommand(Protos.CommandInfo.newBuilder(commandInfo))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(yarnConfig + commandInfoRM)))
 //                        .setExecutor(Protos.ExecutorInfo.newBuilder(executorInfo))
                         .build();
 
+                resourceManagers++;
+                launchTask(schedulerDriver, offer, task);
+
+            }
+            else if (nodeManagers < 2 && !hostnameRM.isEmpty()) {
+                System.out.println("Starting NM");
+                Protos.TaskID taskId = buildNewTaskID();
+                Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
+                        .setName("task " + taskId).setTaskId(taskId)
+                        .setSlaveId(offer.getSlaveId())
+                        .addResources(buildResource("cpus", 1))
+                        .addResources(buildResource("mem", 1024))
+                        .addResources(buildResource("disk", 5000))
+                        .setCommand(Protos.CommandInfo.newBuilder(commandInfoNM))
+                        .build();
+
+                nodeManagers++;
                 launchTask(schedulerDriver, offer, task);
             }
         }
@@ -214,7 +257,7 @@ public class ExampleScheduler implements Scheduler {
 
     private Protos.TaskID buildNewTaskID() {
         return Protos.TaskID.newBuilder()
-                .setValue(Integer.toString(taskIdCounter++))
+                .setValue(Integer.toString(taskId++))
                 .build();
     }
 
