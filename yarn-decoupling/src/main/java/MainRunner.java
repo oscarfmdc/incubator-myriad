@@ -1,21 +1,19 @@
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.yarn.server.resourcemanager.RMContext;
 import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.CommandInfo;
-import org.apache.mesos.Protos.ExecutorInfo;
 import org.apache.mesos.Protos.FrameworkInfo;
 import org.apache.mesos.Scheduler;
-import org.apache.myriad.Main;
-import org.apache.myriad.scheduler.yarn.MyriadFairScheduler;
-import org.apache.myriad.scheduler.yarn.interceptor.CompositeInterceptor;
 
 public class MainRunner {
 
-    private static final String frameworkName = "mesos-framework-example";
-    private static final String executorName = "executor-example-name";
-    private static final String remoteExecutorPath = "/tmp/yarn-decoupling.jar";
-    private static String command = "export JAVA_HOME=/usr && sudo -E /opt/hadoop/bin/yarn --config /opt/hadoop/etc/hadoop/ resourcemanager";
+    private static final String frameworkName = "myriad-yarn-decoupling";
+    private static final String remoteExecutorPath = "/root/hadoop-2.7.7.tar";
+
+    private static String commandRM = "ls -la ./root/hadoop-2.7.7/";
+    private static String commandNM = "ls -la ./root/hadoop-2.7.7/";
+
+//    private static String commandRM = "export JAVA_HOME=/usr && sudo -E ./root/hadoop-2.7.7/bin/yarn --config ./root/hadoop-2.7.7/etc/hadoop/ resourcemanager";
+//    private static String commandNM = "export JAVA_HOME=/usr && sudo -E ./root/hadoop-2.7.7/bin/yarn --config ./root/hadoop-2.7.7/etc/hadoop/ nodemanager";
 
     private static FrameworkInfo getFrameworkInfo() {
         FrameworkInfo.Builder builder = FrameworkInfo.newBuilder();
@@ -28,11 +26,12 @@ public class MainRunner {
     private static CommandInfo.URI getUri() {
         CommandInfo.URI.Builder uriBuilder = CommandInfo.URI.newBuilder();
         uriBuilder.setValue(remoteExecutorPath);
+//        uriBuilder.setExecutable(true);
         uriBuilder.setExtract(false);
         return uriBuilder.build();
     }
 
-    private static CommandInfo getCommandInfo() {
+    private static CommandInfo getCommandInfo(String command) {
         CommandInfo.Builder cmdInfoBuilder = Protos.CommandInfo.newBuilder();
         cmdInfoBuilder.addUris(getUri());
         cmdInfoBuilder.setValue(command);
@@ -40,44 +39,15 @@ public class MainRunner {
         return cmdInfoBuilder.build();
     }
 
-    private static ExecutorInfo getExecutorInfo() {
-        ExecutorInfo.Builder builder = ExecutorInfo.newBuilder();
-        builder.setExecutorId(Protos.ExecutorID.newBuilder().setValue(executorName));
-        builder.setCommand(getCommandInfo());
-        builder.setName(executorName);
-//        builder.addResources(buildResource("cpus", 0.1))
-//                .addResources(buildResource("mem", 128))
-//                .addResources(buildResource("disk", 10000));
-
-        return builder.build();
-    }
-
-    private static Protos.Resource buildResource(String name, double value) {
-        return Protos.Resource.newBuilder()
-                .setName(name)
-                .setType(Protos.Value.Type.SCALAR)
-                .setScalar(buildScalar(value)).build();
-    }
-
-    private static Protos.Value.Scalar.Builder buildScalar(double value) {
-        return Protos.Value.Scalar.newBuilder().setValue(value);
-    }
-
     private static void runFramework(String mesosMaster) {
 
-        Scheduler scheduler = new ExampleScheduler(getExecutorInfo(), getCommandInfo());
+        Scheduler scheduler = new ExampleScheduler(commandRM, getCommandInfo(commandNM));
         MesosSchedulerDriver driver = new MesosSchedulerDriver(scheduler, getFrameworkInfo(), mesosMaster);
 
         int status = driver.run() == Protos.Status.DRIVER_STOPPED ? 0 : 1;
 
         // Ensure that the driver process terminates.
         driver.stop();
-
-        try {
-            Main.initialize(new Configuration(), new MyriadFairScheduler(), null, new CompositeInterceptor());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
         // For this test to pass reliably on some platforms, this sleep is
         // required to ensure that the SchedulerDriver teardown is complete
