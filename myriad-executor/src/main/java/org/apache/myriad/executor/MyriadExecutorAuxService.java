@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Auxillary service wrapper for MyriadExecutor
+ * Auxiliary service wrapper for MyriadExecutor
  */
 public class MyriadExecutorAuxService extends AuxiliaryService {
 

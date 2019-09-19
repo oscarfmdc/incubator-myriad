@@ -30,3 +30,4 @@ include "myriad-commons"
 include "myriad-scheduler"
 include "myriad-executor"
 include "docker"
+include 'yarn-decoupling'

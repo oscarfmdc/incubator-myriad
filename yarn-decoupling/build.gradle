@@ -1,0 +1,29 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+version 'unspecified'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+// hadoopVer = "2.7.0"
+hadoopVer = "3.1.0"
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    compile ("org.apache.hadoop:hadoop-yarn-common:${hadoopVer}")
+    compile ("org.apache.hadoop:hadoop-yarn-server-resourcemanager:${hadoopVer}")
+    compile ("org.apache.hadoop:hadoop-yarn-server-nodemanager:${hadoopVer}")
+    compile ("org.apache.hadoop:hadoop-common:${hadoopVer}")
+    compile ("org.apache.hadoop:hadoop-client:${hadoopVer}")
+    compile ("org.apache.hadoop:hadoop-yarn-client:${hadoopVer}")
+
+    compile group: 'org.apache.hadoop', name: 'hadoop-core', version: '1.2.1'
+
+    compile project(":myriad-scheduler")
+    compile project(":myriad-executor")
+}

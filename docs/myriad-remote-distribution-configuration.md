@@ -30,7 +30,7 @@ From the project root you build Myriad with the commands
 
 ### Step 2: Deploy the Myriad Files
 
-To deploy the Myriad Scheduler and Executor files, copy the jar filess and configuration file to the following locations:
+To deploy the Myriad Scheduler and Executor files, copy the jar files and configuration file to the following locations:
 
 ```
 cp myriad-scheduler/build/libs/*.jar /opt/hadoop-2.7.0/share/hadoop/yarn/lib/

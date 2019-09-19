@@ -1,0 +1,1 @@
+java -cp /opt/mesos/build/src/java/target/protobuf-java-3.5.0.jar:/opt/mesos/build/src/java/target/mesos-1.8.0.jar:/tmp/yarn-decoupling.jar -Djava.library.path=/opt/mesos/build/src/.libs ExampleExecutor
