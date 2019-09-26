@@ -154,24 +154,26 @@ public class ExampleScheduler implements Scheduler {
     private int resourceManagers = 0;
     private int nodeManagers = 0;
     private String commandInfoRM;
-    private Protos.CommandInfo commandInfoNM;
+    private String commandInfoNM;
     private String hostnameRM = "";
-    private static final String remoteExecutorPath = "/root/hadoop-2.7.7.tar";
+    private String remoteExecutorPath = "";
+    private String yarnConfig = "";
 
-    public ExampleScheduler(String commandRM, Protos.CommandInfo commandInfoNM) {
+    public ExampleScheduler(String commandRM, String commandInfoNM, String remoteExecutorPath) {
         this.commandInfoRM = commandRM;
         this.commandInfoNM = commandInfoNM;
+        this.remoteExecutorPath = remoteExecutorPath;
     }
 
-    private static Protos.CommandInfo.URI getUri() {
+    private Protos.CommandInfo.URI getUri() {
         Protos.CommandInfo.URI.Builder uriBuilder = Protos.CommandInfo.URI.newBuilder();
         uriBuilder.setValue(remoteExecutorPath);
 //        uriBuilder.setExecutable(true);
-        uriBuilder.setExtract(false);
+        uriBuilder.setExtract(true);
         return uriBuilder.build();
     }
 
-    private static Protos.CommandInfo getCommandInfo(String command) {
+    private Protos.CommandInfo getCommandInfo(String command) {
         Protos.CommandInfo.Builder cmdInfoBuilder = Protos.CommandInfo.newBuilder();
         cmdInfoBuilder.addUris(getUri());
         cmdInfoBuilder.setValue(command);
@@ -206,17 +208,18 @@ public class ExampleScheduler implements Scheduler {
     public void resourceOffers(SchedulerDriver schedulerDriver, List<Protos.Offer> offers) {
         for (Protos.Offer offer : offers) {
 
-            hostnameRM = offer.getHostname();
-
-            String yarnConfig = "echo \"<configuration><property><name>yarn.acl.enable</name><value>0</value></property>" +
-                    "<property><name>yarn.resourcemanager.hostname</name><value>" + hostnameRM + "</value></property></configuration>\" " +
-                    "> /opt/hadoop/etc/hadoop/yarn-site.xml && ";
-
             if (resourceManagers < 1) {
+
+                hostnameRM = offer.getHostname();
+
+                yarnConfig = "echo \"<configuration><property><name>yarn.acl.enable</name><value>0</value></property>" +
+                        "<property><name>yarn.resourcemanager.hostname</name><value>" + hostnameRM + "</value></property></configuration>\" " +
+                        "> ./hadoop-2.7.7/etc/hadoop/yarn-site.xml && ";
+
                 System.out.println("Starting RM");
                 Protos.TaskID taskId = buildNewTaskID();
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
-                        .setName("task " + taskId).setTaskId(taskId)
+                        .setName("resourceManager" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
                         .addResources(buildResource("cpus", 1))
                         .addResources(buildResource("mem", 2048))
@@ -227,18 +230,17 @@ public class ExampleScheduler implements Scheduler {
 
                 resourceManagers++;
                 launchTask(schedulerDriver, offer, task);
-
             }
             else if (nodeManagers < 2 && !hostnameRM.isEmpty()) {
                 System.out.println("Starting NM");
                 Protos.TaskID taskId = buildNewTaskID();
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
-                        .setName("task " + taskId).setTaskId(taskId)
+                        .setName("nodeManager" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
                         .addResources(buildResource("cpus", 1))
                         .addResources(buildResource("mem", 1024))
                         .addResources(buildResource("disk", 5000))
-                        .setCommand(Protos.CommandInfo.newBuilder(commandInfoNM))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(yarnConfig + commandInfoNM)))
                         .build();
 
                 nodeManagers++;
