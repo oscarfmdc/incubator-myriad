@@ -153,11 +153,22 @@ public class ExampleScheduler implements Scheduler {
     private int taskId = 0;
     private int resourceManagers = 0;
     private int nodeManagers = 0;
+    private int namenode = 0;
+    private int datanode = 0;
     private String commandInfoRM;
     private String commandInfoNM;
+    private String commandInfoDNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs datanode";
+    private String commandInfoNNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs namenode -format && sudo -E ./hadoop-2.7.7/bin/hdfs namenode";
     private String hostnameRM = "";
     private String remoteExecutorPath = "";
     private String yarnConfig = "";
+    private String hdfsSite = "echo \"<configuration><property>\n" +
+            "            <name>dfs.replication</name>\n" +
+            "            <value>1</value>\n" +
+            "    </property>\n" +
+            "</configuration>\" " +
+            "> ./hadoop-2.7.7/etc/hadoop/hdfs-site.xml && ";
+    private String coreSite = "";
 
     public ExampleScheduler(String commandRM, String commandInfoNM, String remoteExecutorPath) {
         this.commandInfoRM = commandRM;
@@ -208,12 +219,54 @@ public class ExampleScheduler implements Scheduler {
     public void resourceOffers(SchedulerDriver schedulerDriver, List<Protos.Offer> offers) {
         for (Protos.Offer offer : offers) {
 
-            if (resourceManagers < 1) {
+            if (namenode < 1) {
+
+                String hostnameHDFS = offer.getHostname();
+
+                coreSite = "echo \"<configuration>\n" +
+                        "        <property>\n" +
+                        "            <name>fs.default.name</name>\n" +
+                        "            <value>hdfs://" + hostnameHDFS + ":9000</value>\n" +
+                        "        </property>\n" +
+                        "    </configuration>\" " +
+                        "> ./hadoop-2.7.7/etc/hadoop/core-site.xml && ";
+
+                System.out.println("Starting Namenode HDFS");
+                Protos.TaskID taskId = buildNewTaskID();
+                Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
+                        .setName("HDFS Namenode" + taskId).setTaskId(taskId)
+                        .setSlaveId(offer.getSlaveId())
+                        .addResources(buildResource("cpus", 1))
+                        .addResources(buildResource("mem", 1024))
+                        .addResources(buildResource("disk", 5000))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + commandInfoNNHDFS)))
+                        .build();
+                launchTask(schedulerDriver, offer, task);
+
+                namenode++;
+            }
+            else if (datanode < 1) {
+                System.out.println("Starting Datanode HDFS");
+                Protos.TaskID taskId = buildNewTaskID();
+                Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
+                        .setName("HDFS Datanode" + taskId).setTaskId(taskId)
+                        .setSlaveId(offer.getSlaveId())
+                        .addResources(buildResource("cpus", 1))
+                        .addResources(buildResource("mem", 1024))
+                        .addResources(buildResource("disk", 10000))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + commandInfoDNHDFS)))
+                        .build();
+                launchTask(schedulerDriver, offer, task);
+                datanode++;
+            }
+
+            else if (resourceManagers < 1) {
 
                 hostnameRM = offer.getHostname();
 
                 yarnConfig = "echo \"<configuration><property><name>yarn.acl.enable</name><value>0</value></property>" +
-                        "<property><name>yarn.resourcemanager.hostname</name><value>" + hostnameRM + "</value></property></configuration>\" " +
+                        "<property><name>yarn.resourcemanager.hostname</name><value>" + hostnameRM + "</value></property>" +
+                        "<property><name>yarn.nodemanager.aux-services</name><value>mapreduce_shuffle</value></property></configuration>\" " +
                         "> ./hadoop-2.7.7/etc/hadoop/yarn-site.xml && ";
 
                 System.out.println("Starting RM");
@@ -224,7 +277,7 @@ public class ExampleScheduler implements Scheduler {
                         .addResources(buildResource("cpus", 1))
                         .addResources(buildResource("mem", 2048))
                         .addResources(buildResource("disk", 10000))
-                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(yarnConfig + commandInfoRM)))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + yarnConfig + commandInfoRM)))
 //                        .setExecutor(Protos.ExecutorInfo.newBuilder(executorInfo))
                         .build();
 
@@ -240,7 +293,7 @@ public class ExampleScheduler implements Scheduler {
                         .addResources(buildResource("cpus", 1))
                         .addResources(buildResource("mem", 1024))
                         .addResources(buildResource("disk", 5000))
-                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(yarnConfig + commandInfoNM)))
+                        .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + yarnConfig + commandInfoNM)))
                         .build();
 
                 nodeManagers++;

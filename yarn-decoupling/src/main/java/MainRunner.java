@@ -47,8 +47,6 @@ public class MainRunner {
         @Override
         public void handle(HttpExchange t) throws IOException {
 
-            System.out.println("heyyy");
-
             OutputStream os = t.getResponseBody();
 
             try {

@@ -40,6 +40,18 @@ ssh fedora-mesos-m0.node.keedio.cloud
 sh run-framework-myriad.sh fedora-mesos-m0.node.keedio.cloud
 ```
 
+### Testing
+
+```
+export JAVA_HOME=/usr
+
+./hdfs namenode -format
+./hdfs namenode
+./hdfs datanode
+
+./yarn jar ../../hadoop-mapreduce-examples-2.7.7.jar pi 16 1000
+```
+
 Apache Mesos UI: http://100.0.10.101:5050
 Yarn UI: http://100.0.10.10x:8088
 
