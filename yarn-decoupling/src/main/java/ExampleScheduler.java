@@ -144,6 +144,7 @@
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Properties;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
@@ -157,29 +158,22 @@ public class ExampleScheduler implements Scheduler {
     private int datanode = 0;
     private String commandInfoRM;
     private String commandInfoNM;
-    private String commandInfoDNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs datanode";
-    private String commandInfoNNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs namenode -format && sudo -E ./hadoop-2.7.7/bin/hdfs namenode";
     private String hostnameRM = "";
     private String remoteExecutorPath = "";
     private String yarnConfig = "";
-    private String hdfsSite = "echo \"<configuration><property>\n" +
-            "            <name>dfs.replication</name>\n" +
-            "            <value>1</value>\n" +
-            "    </property>\n" +
-            "</configuration>\" " +
-            "> ./hadoop-2.7.7/etc/hadoop/hdfs-site.xml && ";
     private String coreSite = "";
+    private Properties myriadConfig;
 
-    public ExampleScheduler(String commandRM, String commandInfoNM, String remoteExecutorPath) {
+    public ExampleScheduler(String commandRM, String commandInfoNM, String remoteExecutorPath, Properties myriadConfig) {
         this.commandInfoRM = commandRM;
         this.commandInfoNM = commandInfoNM;
         this.remoteExecutorPath = remoteExecutorPath;
+        this.myriadConfig = myriadConfig;
     }
 
     private Protos.CommandInfo.URI getUri() {
         Protos.CommandInfo.URI.Builder uriBuilder = Protos.CommandInfo.URI.newBuilder();
         uriBuilder.setValue(remoteExecutorPath);
-//        uriBuilder.setExecutable(true);
         uriBuilder.setExtract(true);
         return uriBuilder.build();
     }
@@ -217,28 +211,47 @@ public class ExampleScheduler implements Scheduler {
 
     @Override
     public void resourceOffers(SchedulerDriver schedulerDriver, List<Protos.Offer> offers) {
+
+        int maxNodeManagers = Integer.parseInt((String) myriadConfig.getOrDefault("max_nodemanagers", 2));
+
+        int namenode_cpu = Integer.parseInt((String) myriadConfig.getOrDefault("namenode_cpu", 1));
+        int namenode_ram = Integer.parseInt((String) myriadConfig.getOrDefault("namenode_ram", 1024));
+        int namenode_disk_mb = Integer.parseInt((String) myriadConfig.getOrDefault("namenode_disk_mb", 8000));
+
+        int datanode_cpu = Integer.parseInt((String) myriadConfig.getOrDefault("datanode_cpu", 1));
+        int datanode_ram = Integer.parseInt((String) myriadConfig.getOrDefault("datanode_ram", 1024));
+        int datanode_disk_mb = Integer.parseInt((String) myriadConfig.getOrDefault("datanode_disk_mb", 8000));
+
+        int resourcemanager_cpu = Integer.parseInt((String) myriadConfig.getOrDefault("resourcemanager_cpu", 1));
+        int resourcemanager_ram = Integer.parseInt((String) myriadConfig.getOrDefault("resourcemanager_ram", 1024));
+        int resourcemanager_disk_mb = Integer.parseInt((String) myriadConfig.getOrDefault("resourcemanager_disk_mb", 8000));
+
+        int nodemanager_cpu = Integer.parseInt((String) myriadConfig.getOrDefault("nodemanager_cpu", 1));
+        int nodemanager_ram = Integer.parseInt((String) myriadConfig.getOrDefault("nodemanager_ram", 1024));
+        int nodemanager_disk_mb = Integer.parseInt((String) myriadConfig.getOrDefault("nodemanager_disk_mb", 8000));
+
+        String hdfsSite = "echo \"<configuration><property><name>dfs.replication</name><value>1</value>" +
+                "</property></configuration>\" > ./hadoop-2.7.7/etc/hadoop/hdfs-site.xml && ";
+
         for (Protos.Offer offer : offers) {
 
             if (namenode < 1) {
 
                 String hostnameHDFS = offer.getHostname();
 
-                coreSite = "echo \"<configuration>\n" +
-                        "        <property>\n" +
-                        "            <name>fs.default.name</name>\n" +
-                        "            <value>hdfs://" + hostnameHDFS + ":9000</value>\n" +
-                        "        </property>\n" +
-                        "    </configuration>\" " +
+                coreSite = "echo \"<configuration><property><name>fs.default.name</name><value>" +
+                        "hdfs://" + hostnameHDFS + ":9000</value></property></configuration>\" " +
                         "> ./hadoop-2.7.7/etc/hadoop/core-site.xml && ";
 
                 System.out.println("Starting Namenode HDFS");
                 Protos.TaskID taskId = buildNewTaskID();
+                String commandInfoNNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs namenode -format && sudo -E ./hadoop-2.7.7/bin/hdfs namenode";
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
                         .setName("HDFS Namenode" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
-                        .addResources(buildResource("cpus", 1))
-                        .addResources(buildResource("mem", 1024))
-                        .addResources(buildResource("disk", 5000))
+                        .addResources(buildResource("cpus", namenode_cpu))
+                        .addResources(buildResource("mem", namenode_ram))
+                        .addResources(buildResource("disk", namenode_disk_mb))
                         .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + commandInfoNNHDFS)))
                         .build();
                 launchTask(schedulerDriver, offer, task);
@@ -248,12 +261,13 @@ public class ExampleScheduler implements Scheduler {
             else if (datanode < 1) {
                 System.out.println("Starting Datanode HDFS");
                 Protos.TaskID taskId = buildNewTaskID();
+                String commandInfoDNHDFS = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/hdfs datanode";
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
                         .setName("HDFS Datanode" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
-                        .addResources(buildResource("cpus", 1))
-                        .addResources(buildResource("mem", 1024))
-                        .addResources(buildResource("disk", 10000))
+                        .addResources(buildResource("cpus", datanode_cpu))
+                        .addResources(buildResource("mem", datanode_ram))
+                        .addResources(buildResource("disk", datanode_disk_mb))
                         .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + commandInfoDNHDFS)))
                         .build();
                 launchTask(schedulerDriver, offer, task);
@@ -274,9 +288,9 @@ public class ExampleScheduler implements Scheduler {
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
                         .setName("resourceManager" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
-                        .addResources(buildResource("cpus", 1))
-                        .addResources(buildResource("mem", 2048))
-                        .addResources(buildResource("disk", 10000))
+                        .addResources(buildResource("cpus", resourcemanager_cpu))
+                        .addResources(buildResource("mem", resourcemanager_ram))
+                        .addResources(buildResource("disk", resourcemanager_disk_mb))
                         .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + yarnConfig + commandInfoRM)))
 //                        .setExecutor(Protos.ExecutorInfo.newBuilder(executorInfo))
                         .build();
@@ -284,15 +298,15 @@ public class ExampleScheduler implements Scheduler {
                 resourceManagers++;
                 launchTask(schedulerDriver, offer, task);
             }
-            else if (nodeManagers < 2 && !hostnameRM.isEmpty()) {
+            else if (nodeManagers < maxNodeManagers && !hostnameRM.isEmpty()) {
                 System.out.println("Starting NM");
                 Protos.TaskID taskId = buildNewTaskID();
                 Protos.TaskInfo task = Protos.TaskInfo.newBuilder()
                         .setName("nodeManager" + taskId).setTaskId(taskId)
                         .setSlaveId(offer.getSlaveId())
-                        .addResources(buildResource("cpus", 1))
-                        .addResources(buildResource("mem", 1024))
-                        .addResources(buildResource("disk", 5000))
+                        .addResources(buildResource("cpus", nodemanager_cpu))
+                        .addResources(buildResource("mem", nodemanager_ram))
+                        .addResources(buildResource("disk", nodemanager_disk_mb))
                         .setCommand(Protos.CommandInfo.newBuilder(getCommandInfo(coreSite + hdfsSite + yarnConfig + commandInfoNM)))
                         .build();
 

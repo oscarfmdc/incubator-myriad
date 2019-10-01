@@ -34,10 +34,11 @@ sh run-framework-myriad.sh mesos-m1 run-executor-myriad.cmd
 
 scp yarn-decoupling/run-framework-myriad.sh root@fedora-mesos-m0.node.keedio.cloud:/root
 scp yarn-decoupling/build/libs/yarn-decoupling.jar root@fedora-mesos-m0.node.keedio.cloud:/tmp
+scp yarn-decoupling/src/main/resources/myriad.properties root@fedora-mesos-m0.node.keedio.cloud:/root
 
 ssh fedora-mesos-m0.node.keedio.cloud
 
-sh run-framework-myriad.sh fedora-mesos-m0.node.keedio.cloud
+sh run-framework-myriad.sh fedora-mesos-m0.node.keedio.cloud myriad.properties
 ```
 
 ### Testing

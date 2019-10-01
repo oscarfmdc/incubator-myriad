@@ -10,16 +10,13 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Properties;
 
 public class MainRunner {
 
     private static final String frameworkName = "myriad-yarn-decoupling";
-    private static String remoteExecutorPath = "";
 
     private static String driverHostname;
-
-    private static String commandRM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ resourcemanager";
-    private static String commandNM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ nodemanager";
 
     private static FrameworkInfo getFrameworkInfo() {
         FrameworkInfo.Builder builder = FrameworkInfo.newBuilder();
@@ -55,7 +52,7 @@ public class MainRunner {
                 t.sendResponseHeaders(200, 0);
                 FileInputStream fs = new FileInputStream(newFile);
                 final byte[] buffer = new byte[0x10000];
-                int count = 0;
+                int count;
                 while ((count = fs.read(buffer)) >= 0) {
                     os.write(buffer,0,count);
                 }
@@ -68,7 +65,7 @@ public class MainRunner {
         }
     }
 
-    private static void runFramework(String mesosMaster) {
+    private static void runFramework(String mesosMaster, String configPath) {
 
         try {
             driverHostname = InetAddress.getLocalHost().getHostName();
@@ -79,9 +76,22 @@ public class MainRunner {
         MyThread myThread = new MyThread();
         myThread.start();
 
-        remoteExecutorPath = "http://" + driverHostname + ":8000/hadoop-2.7.7.tar";
+        Properties prop = null;
 
-        Scheduler scheduler = new ExampleScheduler(commandRM, commandNM, remoteExecutorPath);
+        try {
+            InputStream input = new FileInputStream(configPath);
+            prop = new Properties();
+            prop.load(input);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        String remoteExecutorPath = "http://" + driverHostname + ":8000/hadoop-2.7.7.tar";
+
+        String commandNM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ nodemanager";
+        String commandRM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ resourcemanager";
+        Scheduler scheduler = new ExampleScheduler(commandRM, commandNM, remoteExecutorPath, prop);
         MesosSchedulerDriver driver = new MesosSchedulerDriver(scheduler, getFrameworkInfo(), mesosMaster);
 
         int status = driver.run() == Protos.Status.DRIVER_STOPPED ? 0 : 1;
@@ -107,6 +117,6 @@ public class MainRunner {
     }
 
     public static void main(String[] args) {
-        runFramework(args[0]);
+        runFramework(args[0], args[1]);
     }
 }

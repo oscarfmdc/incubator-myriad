@@ -10,5 +10,6 @@ echo $JAVA
 
 exec ${JAVA} -cp ${EXAMPLES_JAR} \
     MainRunner \
-    "${1}":5050
+    "${1}":5050 \
+    "${2}"
     #zk://${1}:2181/mesos
