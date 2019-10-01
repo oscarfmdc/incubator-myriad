@@ -9,7 +9,7 @@ EXAMPLES_JAR=/tmp/yarn-decoupling.jar
 echo $JAVA
 
 exec ${JAVA} -cp ${EXAMPLES_JAR} \
-    MainRunner \
+    MyriadDriverD \
     "${1}":5050 \
     "${2}"
     #zk://${1}:2181/mesos

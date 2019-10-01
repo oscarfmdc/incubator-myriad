@@ -12,15 +12,15 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Properties;
 
-public class MainRunner {
+public class MyriadDriverD {
 
-    private static final String frameworkName = "myriad-yarn-decoupling";
-
+    private static final String frameworkName = "apache-myriad";
+    private static int frameworkFailoverTimeout;
     private static String driverHostname;
 
     private static FrameworkInfo getFrameworkInfo() {
         FrameworkInfo.Builder builder = FrameworkInfo.newBuilder();
-        builder.setFailoverTimeout(43200000);
+        builder.setFailoverTimeout(frameworkFailoverTimeout);
         builder.setUser("");
         builder.setName(frameworkName);
         return builder.build();
@@ -87,11 +87,13 @@ public class MainRunner {
             System.exit(1);
         }
 
+        frameworkFailoverTimeout = Integer.parseInt((String) prop.getOrDefault("framework_failover_timeout", 43200000));
+
         String remoteExecutorPath = "http://" + driverHostname + ":8000/hadoop-2.7.7.tar";
 
         String commandNM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ nodemanager";
         String commandRM = "export JAVA_HOME=/usr && sudo -E ./hadoop-2.7.7/bin/yarn --config ./hadoop-2.7.7/etc/hadoop/ resourcemanager";
-        Scheduler scheduler = new ExampleScheduler(commandRM, commandNM, remoteExecutorPath, prop);
+        Scheduler scheduler = new MyriadSchedulerD(commandRM, commandNM, remoteExecutorPath, prop);
         MesosSchedulerDriver driver = new MesosSchedulerDriver(scheduler, getFrameworkInfo(), mesosMaster);
 
         int status = driver.run() == Protos.Status.DRIVER_STOPPED ? 0 : 1;

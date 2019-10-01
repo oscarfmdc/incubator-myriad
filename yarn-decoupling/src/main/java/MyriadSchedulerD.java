@@ -149,7 +149,7 @@ import org.apache.mesos.Protos;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 
-public class ExampleScheduler implements Scheduler {
+public class MyriadSchedulerD implements Scheduler {
 
     private int taskId = 0;
     private int resourceManagers = 0;
@@ -164,7 +164,7 @@ public class ExampleScheduler implements Scheduler {
     private String coreSite = "";
     private Properties myriadConfig;
 
-    public ExampleScheduler(String commandRM, String commandInfoNM, String remoteExecutorPath, Properties myriadConfig) {
+    public MyriadSchedulerD(String commandRM, String commandInfoNM, String remoteExecutorPath, Properties myriadConfig) {
         this.commandInfoRM = commandRM;
         this.commandInfoNM = commandInfoNM;
         this.remoteExecutorPath = remoteExecutorPath;
